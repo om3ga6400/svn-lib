@@ -210,6 +210,11 @@ describe("Scene", () => {
       expect(sceneWithOptions.options.background).toBe("bg.jpg");
     });
 
+    it("should preserve the chapter presentation option", () => {
+      const chapterScene = new Scene("chapter1", { presentation: "chapter" });
+      expect(chapterScene.options.presentation).toBe("chapter");
+    });
+
     it("should create scene with empty options by default", () => {
       expect(scene.options).toEqual({});
     });

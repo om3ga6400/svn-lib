@@ -163,6 +163,17 @@ script.addScene(scene2);
 // scene2 automatically follows scene1
 ```
 
+For chapter title cards, set the scene presentation. The renderer automatically
+adds the `chapter-card` class to the game container while that scene is active,
+so no `sceneChange` listener is needed:
+
+```typescript
+const chapter = new Scene("chapter1", { presentation: "chapter" });
+chapter.add(narrator);
+narrator.say("Chapter 1: WacDonalds");
+script.addScene(chapter);
+```
+
 ## Dialogue Effects
 
 Dialogue can have optional effects:

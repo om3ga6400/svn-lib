@@ -186,6 +186,11 @@ export class DOMRenderer {
     // Reset action index
     this.currentActionIndex = 0;
 
+    this.container.classList.toggle(
+      "chapter-card",
+      scene.options.presentation === "chapter"
+    );
+
     // Update background
     const options = scene.options;
     if (options.background) {

@@ -78,9 +78,11 @@ export interface SceneAction {
  * Options for scene configuration.
  * @typedef {Object} SceneOptions
  * @property {string} [background] - Background image URL
+ * @property {("dialogue"|"chapter")} [presentation] - Presentation style for the scene
  */
 export interface SceneOptions {
   background?: string;
+  presentation?: "dialogue" | "chapter";
 }
 
 /**
@@ -293,7 +295,8 @@ export class Scene {
    * Creates a new Scene instance.
    * @param {string} id - Unique identifier for the scene
    * @param {SceneOptions} [options={}] - Scene configuration options
-   * @param {string} [options.background] - Background image URL
+    * @param {string} [options.background] - Background image URL
+    * @param {("dialogue"|"chapter")} [options.presentation="dialogue"] - Scene presentation style
    *
    */
   constructor(id: string, options: SceneOptions = {}) {

@@ -136,6 +136,51 @@ describe("DOMRenderer", () => {
     });
   });
 
+  describe("scene presentation", () => {
+    it("applies the chapter-card class for chapter scenes", async () => {
+      const testScript = new Script();
+      const chapterScene = new Scene("chapter1", {
+        presentation: "chapter",
+      });
+      const narrator = new Character("Narrator");
+      chapterScene.add(narrator);
+      narrator.say("Chapter 1: WacDonalds");
+      testScript.addScene(chapterScene);
+
+      new VNEngine({
+        script: testScript,
+        container,
+        startScene: "chapter1",
+      });
+
+      await vi.runAllTimersAsync();
+
+      expect(container.classList.contains("chapter-card")).toBe(true);
+      expect(getDialogueText()).toBe("Chapter 1: WacDonalds");
+    });
+
+    it("removes the chapter-card class when entering a regular scene", async () => {
+      const testScript = new Script();
+      const chapterScene = new Scene("chapter1", {
+        presentation: "chapter",
+      });
+      const regularScene = new Scene("scene1");
+      testScript.addScene(chapterScene);
+      testScript.addScene(regularScene);
+      const testEngine = new VNEngine({
+        script: testScript,
+        container,
+        startScene: "chapter1",
+      });
+
+      await vi.runAllTimersAsync();
+      testEngine.jumpTo("scene1");
+      await vi.runAllTimersAsync();
+
+      expect(container.classList.contains("chapter-card")).toBe(false);
+    });
+  });
+
   describe("assets directory", () => {
     const createTestEngineWithAssets = async (
       background: string,
