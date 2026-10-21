@@ -430,6 +430,31 @@ describe("DOMRenderer", () => {
       expect(getDialogueText()).toBe("Shaken dialogue");
     });
 
+    it("should run trailing screen effects before closing quotes", async () => {
+      const screenEffect = vi.fn();
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say('"Quoted dialogue [flash]"', { effect: "typewriter" });
+      testScript.addScene(testScene);
+
+      new VNEngine({
+        script: testScript,
+        container,
+        startScene: "test-scene",
+        renderer: {
+          typewriterSpeed: 10,
+          screenEffects: { flash: screenEffect },
+        },
+      });
+
+      await vi.runAllTimersAsync();
+
+      expect(screenEffect).toHaveBeenCalledWith(container);
+      expect(getDialogueText()).toBe('"Quoted dialogue"');
+    });
+
     it("should restart function screen effects when retriggered", async () => {
       const testScript = new Script();
       const testScene = new Scene("test-scene");

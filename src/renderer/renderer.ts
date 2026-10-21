@@ -453,12 +453,16 @@ export class DOMRenderer {
       this.runScreenEffect(leadingScreenEffect);
     }
 
-    const trailingScreenEffectMatch = text.match(/\s*\[([\w-]+)\]\s*$/);
+    const trailingScreenEffectMatch = text.match(
+      /\s*\[([\w-]+)\](?=\s*["'\u201d\u2019)]*\s*$)/,
+    );
     const trailingScreenEffect = trailingScreenEffectMatch
       ? this.options.screenEffects?.[trailingScreenEffectMatch[1]]
       : undefined;
     if (trailingScreenEffect && trailingScreenEffectMatch) {
-      text = text.slice(0, -trailingScreenEffectMatch[0].length);
+      const matchStart = trailingScreenEffectMatch.index ?? 0;
+      const matchEnd = matchStart + trailingScreenEffectMatch[0].length;
+      text = text.slice(0, matchStart) + text.slice(matchEnd);
     }
 
     const runTrailingScreenEffect = () => {
