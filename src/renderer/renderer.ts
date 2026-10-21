@@ -444,21 +444,38 @@ export class DOMRenderer {
   ): Promise<void> {
     this.speakerName.textContent = character.name;
 
-    const screenEffectMatch = text.match(/^\[([\w-]+)\]\s*/);
-    const screenEffect = screenEffectMatch
-      ? this.options.screenEffects?.[screenEffectMatch[1]]
+    const leadingScreenEffectMatch = text.match(/^\[([\w-]+)\]\s*/);
+    const leadingScreenEffect = leadingScreenEffectMatch
+      ? this.options.screenEffects?.[leadingScreenEffectMatch[1]]
       : undefined;
-    if (screenEffect && screenEffectMatch) {
-      text = text.slice(screenEffectMatch[0].length);
-      this.runScreenEffect(screenEffect);
+    if (leadingScreenEffect && leadingScreenEffectMatch) {
+      text = text.slice(leadingScreenEffectMatch[0].length);
+      this.runScreenEffect(leadingScreenEffect);
     }
+
+    const trailingScreenEffectMatch = text.match(/\s*\[([\w-]+)\]\s*$/);
+    const trailingScreenEffect = trailingScreenEffectMatch
+      ? this.options.screenEffects?.[trailingScreenEffectMatch[1]]
+      : undefined;
+    if (trailingScreenEffect && trailingScreenEffectMatch) {
+      text = text.slice(0, -trailingScreenEffectMatch[0].length);
+    }
+
+    const runTrailingScreenEffect = () => {
+      if (trailingScreenEffect) {
+        this.runScreenEffect(trailingScreenEffect);
+      }
+    };
 
     const effect = options?.effect;
 
     if (effect === "typewriter") {
       this.dialogueText.textContent = "";
       const speed = this.options.typewriterSpeed || 50;
-      this.currentAnimation = typewriter(this.dialogueText, text, { speed });
+      this.currentAnimation = typewriter(this.dialogueText, text, {
+        speed,
+        onComplete: runTrailingScreenEffect,
+      });
       await this.currentAnimation;
       this.currentAnimation = null;
     } else if (effect === "fade") {
@@ -472,10 +489,12 @@ export class DOMRenderer {
       this.currentAnimation = fadeIn(this.dialogueText);
       await this.currentAnimation;
       this.currentAnimation = null;
+      runTrailingScreenEffect();
     } else {
       // No effect, display immediately
       this.dialogueText.textContent = text;
       this.dialogueText.style.opacity = "1";
+      runTrailingScreenEffect();
     }
   }
 
