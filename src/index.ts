@@ -49,7 +49,20 @@ export { typewriter, fadeIn, fadeOut } from "./renderer/effects.js";
 export { CancellablePromise } from "./util/promise.js";
 
 // Re-export types for consumers
-export type { VNEngineOptions, EngineEvent, EngineEventType, EngineEventListener } from "./core/engine.js";
-export type { RendererOptions } from "./renderer/renderer.js";
+export type {
+  VNEngineOptions,
+  EngineEvent,
+  EngineEventType,
+  EngineEventListener,
+} from "./core/engine.js";
+export type { RendererOptions, ScreenEffect } from "./renderer/renderer.js";
 export type { TypewriterOptions, FadeOptions } from "./renderer/effects.js";
-export type { SceneAction, SceneActionType, SceneOptions, DialogueOptions, Position, Size, GameState } from "./core/types.js";
+export type {
+  SceneAction,
+  SceneActionType,
+  SceneOptions,
+  DialogueOptions,
+  Position,
+  Size,
+  GameState,
+} from "./core/types.js";

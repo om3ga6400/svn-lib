@@ -3,6 +3,14 @@ import type { SceneAction, Character, Position, Size } from "../core/types.js";
 import { typewriter, fadeIn } from "./effects.js";
 
 /**
+ * A callback for a user-defined screen effect.
+ *
+ * The renderer's root container is passed to the callback so the effect can
+ * update classes, styles, or any other part of the rendered scene.
+ */
+export type ScreenEffect = (container: HTMLElement) => void;
+
+/**
  * Options for configuring the DOM renderer.
  *
  * @interface RendererOptions
@@ -11,6 +19,8 @@ import { typewriter, fadeIn } from "./effects.js";
  * @property {string} [assetsDirectory] - Base directory for asset paths.
  *   When set, relative paths like "character.png" become "assets/character.png".
  *   Absolute paths (starting with "/", "http://", or "https://") are not modified.
+ * @property {Record<string, ScreenEffect>} [screenEffects] - User-defined effects
+ *   triggered by tags at the start of dialogue, such as `[shake]`.
  *
  * @example
  * ```typescript
@@ -25,6 +35,8 @@ export interface RendererOptions {
   typewriterSpeed?: number;
   /** Base directory for asset paths (e.g., "assets", "/assets", "./assets") */
   assetsDirectory?: string;
+  /** Effects triggered by registered tags at the start of dialogue */
+  screenEffects?: Record<string, ScreenEffect>;
 }
 
 /**
@@ -64,6 +76,8 @@ export class DOMRenderer {
   private isProcessing: boolean = false;
   private characterElements: Map<Character, HTMLElement> = new Map();
   private currentAnimation: { cancel: () => void } | null = null;
+  private screenEffectClasses: string[] = [];
+  private screenEffectAnimationEndListener: (() => void) | null = null;
 
   /**
    * Creates a new DOMRenderer instance.
@@ -76,7 +90,7 @@ export class DOMRenderer {
   constructor(
     container: string | HTMLElement,
     engine: VNEngine,
-    options: RendererOptions = {}
+    options: RendererOptions = {},
   ) {
     let containerElement: HTMLElement;
     if (typeof container === "string") {
@@ -188,7 +202,7 @@ export class DOMRenderer {
 
     this.container.classList.toggle(
       "chapter-card",
-      scene.options.presentation === "chapter"
+      scene.options.presentation === "chapter",
     );
 
     // Update background
@@ -280,7 +294,7 @@ export class DOMRenderer {
           return this.displayDialogue(
             action.character,
             action.text,
-            action.options
+            action.options,
           );
         }
         break;
@@ -302,7 +316,7 @@ export class DOMRenderer {
   private showCharacter(
     character: Character,
     position?: Position,
-    size?: Size
+    size?: Size,
   ): void {
     let element = this.characterElements.get(character);
     if (!element) {
@@ -426,9 +440,18 @@ export class DOMRenderer {
   private async displayDialogue(
     character: Character,
     text: string,
-    options?: { effect?: "fade" | "typewriter" }
+    options?: { effect?: "fade" | "typewriter" },
   ): Promise<void> {
     this.speakerName.textContent = character.name;
+
+    const screenEffectMatch = text.match(/^\[([\w-]+)\]\s*/);
+    const screenEffect = screenEffectMatch
+      ? this.options.screenEffects?.[screenEffectMatch[1]]
+      : undefined;
+    if (screenEffect && screenEffectMatch) {
+      text = text.slice(screenEffectMatch[0].length);
+      this.runScreenEffect(screenEffect);
+    }
 
     const effect = options?.effect;
 
@@ -454,6 +477,40 @@ export class DOMRenderer {
       this.dialogueText.textContent = text;
       this.dialogueText.style.opacity = "1";
     }
+  }
+
+  private runScreenEffect(effect: ScreenEffect): void {
+    if (this.screenEffectAnimationEndListener) {
+      this.container.removeEventListener(
+        "animationend",
+        this.screenEffectAnimationEndListener,
+      );
+      this.screenEffectAnimationEndListener = null;
+    }
+
+    for (const className of this.screenEffectClasses) {
+      this.container.classList.remove(className);
+    }
+    this.screenEffectClasses = [];
+    void this.container.offsetWidth;
+
+    const classesBeforeEffect = new Set(Array.from(this.container.classList));
+    effect(this.container);
+    this.screenEffectClasses = Array.from(this.container.classList).filter(
+      (className) => !classesBeforeEffect.has(className),
+    );
+
+    const animationEndListener = () => {
+      for (const className of this.screenEffectClasses) {
+        this.container.classList.remove(className);
+      }
+      this.screenEffectClasses = [];
+      this.screenEffectAnimationEndListener = null;
+    };
+    this.screenEffectAnimationEndListener = animationEndListener;
+    this.container.addEventListener("animationend", animationEndListener, {
+      once: true,
+    });
   }
 
   /**
@@ -569,8 +626,8 @@ export class DOMRenderer {
         val === undefined
           ? fallback
           : typeof val === "number"
-          ? `${val * 100}%`
-          : val;
+            ? `${val * 100}%`
+            : val;
 
       newPosition = {
         x: toCSS(position.x, "50%"),
@@ -598,8 +655,8 @@ export class DOMRenderer {
       val === undefined
         ? undefined
         : typeof val === "number"
-        ? `${val * 100}%`
-        : val;
+          ? `${val * 100}%`
+          : val;
 
     return {
       width: toCSS(size.width),

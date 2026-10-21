@@ -2,15 +2,13 @@
 
 A minimal TypeScript visual novel engine with vanilla DOM rendering, supporting dialogue, character visibility, and scene transitions.
 
-[![](https://img.shields.io/npm/v/simple-visual-novel
-)](https://www.npmjs.com/package/simple-visual-novel) [![Dependent repos (via libraries.io)](https://img.shields.io/librariesio/dependent-repos/npm/simple-visual-novel?label=dependencies)
+[![](https://img.shields.io/npm/v/simple-visual-novel)](https://www.npmjs.com/package/simple-visual-novel) [![Dependent repos (via libraries.io)](https://img.shields.io/librariesio/dependent-repos/npm/simple-visual-novel?label=dependencies)
 ](https://www.npmjs.com/package/simple-visual-novel?activeTab=dependencies) [![Read the Docs](https://img.shields.io/readthedocs/simple-visual-novel)
 ](https://simple-visual-novel.readthedocs.io/en/latest)
 
 ## Docs
 
 The docs can be found at https://simple-visual-novel.readthedocs.io/en/latest
-
 
 ## Features
 
@@ -40,6 +38,7 @@ Of a minified version:
 https://unpkg.com/simple-visual-novel@latest/dist/simple-visual-novel.min.js
 
 Or build it yourself:
+
 ```bash
 npm install
 npm run build
@@ -68,39 +67,47 @@ Include the bundled version in your HTML. The bundle is available in `dist/simpl
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>My Visual Novel</title>
-</head>
-<body>
-  <div id="game-container"></div>
-  
-  <!-- Include the bundled library -->
-  <script src="path/to/simple-visual-novel.js"></script>
-  
-  <script>
-    // Access the library via the SimpleVN global
-    const { Script, Scene, Character, VNEngine } = SimpleVN;
-    
-    // Create your story
-    const script = new Script();
-    const narrator = new Character("Narrator");
-    const scene1 = new Scene("scene1", { background: "park.png" });
-    scene1.add(narrator);
-    narrator.say("Hello, world!");
-    script.addScene(scene1);
-    
-    // Initialize the engine
-    const engine = new VNEngine({
-      script: script,
-      container: "#game-container",
-      startScene: "scene1",
-      renderer: {
-        assetsDirectory: "assets", // Optional: base directory for asset paths
-        // With assetsDirectory set, "park.jpg" becomes "assets/park.jpg"
-      },
-    });
-  </script>
-</body>
+  <head>
+    <title>My Visual Novel</title>
+  </head>
+  <body>
+    <div id="game-container"></div>
+
+    <!-- Include the bundled library -->
+    <script src="path/to/simple-visual-novel.js"></script>
+
+    <script>
+      // Access the library via the SimpleVN global
+      const { Script, Scene, Character, VNEngine } = SimpleVN;
+
+      // Create your story
+      const script = new Script();
+      const narrator = new Character("Narrator");
+      const scene1 = new Scene("scene1", { background: "park.png" });
+      scene1.add(narrator);
+      narrator.say("Hello, world!");
+      script.addScene(scene1);
+
+      // Initialize the engine
+      const engine = new VNEngine({
+        script: script,
+        container: "#game-container",
+        startScene: "scene1",
+        renderer: {
+          assetsDirectory: "assets", // Optional: base directory for asset paths
+          // With assetsDirectory set, "park.jpg" becomes "assets/park.jpg"
+          screenEffects: {
+            shake(container) {
+              container.classList.add("shake");
+            },
+          },
+        },
+      });
+
+      // A dialogue line beginning with [shake] runs the registered effect.
+      // The library clears and restarts effect classes automatically.
+    </script>
+  </body>
 </html>
 ```
 
@@ -232,12 +239,18 @@ scene.add(character, { position: "left", size: { width: "300px" } });
 // Method 3: Normalized coordinates (0.0-1.0)
 character.position = { x: 0.3, y: 0.8 };
 character.size = { width: 0.3, height: 0.6 };
-scene.add(character, { position: { x: 0.7, y: 1.0 }, size: { width: 0.4, height: 0.7 } });
+scene.add(character, {
+  position: { x: 0.7, y: 1.0 },
+  size: { width: 0.4, height: 0.7 },
+});
 
 // Method 4: Pixel values
 character.position = { x: "100px", y: "50px" };
 character.size = { width: "200px", height: "300px" };
-scene.add(character, { position: { x: "200px", y: "0" }, size: { width: "250px" } });
+scene.add(character, {
+  position: { x: "200px", y: "0" },
+  size: { width: "250px" },
+});
 
 // Method 5: Mixed (percentage strings)
 character.position = { x: "30%", y: "80%" };

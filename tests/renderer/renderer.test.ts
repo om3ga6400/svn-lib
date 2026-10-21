@@ -110,7 +110,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain("test.jpg");
     });
@@ -130,7 +130,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toBe("");
     });
@@ -184,7 +184,7 @@ describe("DOMRenderer", () => {
   describe("assets directory", () => {
     const createTestEngineWithAssets = async (
       background: string,
-      assetsDirectory: string
+      assetsDirectory: string,
     ) => {
       container.innerHTML = "";
 
@@ -208,10 +208,10 @@ describe("DOMRenderer", () => {
       await createTestEngineWithAssets("image.png", "assets");
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain(
-        "assets/image.png"
+        "assets/image.png",
       );
     });
 
@@ -219,24 +219,24 @@ describe("DOMRenderer", () => {
       await createTestEngineWithAssets("image.png", "assets/");
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain(
-        "assets/image.png"
+        "assets/image.png",
       );
     });
 
     it("should not modify absolute URLs when assetsDirectory is set", async () => {
       await createTestEngineWithAssets(
         "https://example.com/image.png",
-        "assets"
+        "assets",
       );
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain(
-        "https://example.com/image.png"
+        "https://example.com/image.png",
       );
       expect(backgroundLayer.style.backgroundImage).not.toContain("assets/");
     });
@@ -245,10 +245,10 @@ describe("DOMRenderer", () => {
       await createTestEngineWithAssets("/images/image.png", "assets");
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain(
-        "/images/image.png"
+        "/images/image.png",
       );
       expect(backgroundLayer.style.backgroundImage).not.toContain("assets/");
     });
@@ -291,7 +291,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       expect(dialogueText.textContent).toBe("Fade dialogue");
       // After fade completes, opacity should be 1
@@ -315,7 +315,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       expect(dialogueText.textContent).toBe("Typewriter dialogue");
     });
@@ -350,7 +350,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const backgroundLayer = container.querySelector(
-        ".vn-background-layer"
+        ".vn-background-layer",
       ) as HTMLElement;
       expect(backgroundLayer.style.backgroundImage).toContain("test2.jpg");
     });
@@ -375,11 +375,139 @@ describe("DOMRenderer", () => {
       expect(testRenderer).toBeDefined();
       expect(testRenderer).not.toBeNull();
     });
+
+    it("should run function screen effects from dialogue tags", async () => {
+      const screenEffect = vi.fn((effectContainer: HTMLElement) => {
+        effectContainer.classList.add("shake");
+      });
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say("[shake] Shaken dialogue");
+      testScript.addScene(testScene);
+
+      new VNEngine({
+        script: testScript,
+        container: container,
+        startScene: "test-scene",
+        renderer: { screenEffects: { shake: screenEffect } },
+      });
+
+      await vi.runAllTimersAsync();
+
+      expect(screenEffect).toHaveBeenCalledWith(container);
+      expect(container.classList.contains("shake")).toBe(true);
+      expect(getDialogueText()).toBe("Shaken dialogue");
+    });
+
+    it("should restart function screen effects when retriggered", async () => {
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say("[shake] First dialogue");
+      character.say("[shake] Second dialogue");
+      testScript.addScene(testScene);
+
+      const testEngine = new VNEngine({
+        script: testScript,
+        container: container,
+        startScene: "test-scene",
+        renderer: {
+          screenEffects: {
+            shake: (effectContainer) => effectContainer.classList.add("shake"),
+          },
+        },
+      });
+
+      await vi.runAllTimersAsync();
+      expect(container.classList.contains("shake")).toBe(true);
+
+      const offsetWidth = vi.spyOn(container, "offsetWidth", "get");
+      container
+        .querySelector(".vn-dialogue-box")
+        ?.dispatchEvent(new Event("click"));
+      await vi.runAllTimersAsync();
+
+      expect(offsetWidth).toHaveBeenCalled();
+      expect(container.classList.contains("shake")).toBe(true);
+      expect(getDialogueText()).toBe("Second dialogue");
+      expect(testEngine.currentScene).toBeDefined();
+    });
+
+    it("should remove effect classes when the animation ends", async () => {
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say("[shake] Shaken dialogue");
+      testScript.addScene(testScene);
+
+      new VNEngine({
+        script: testScript,
+        container: container,
+        startScene: "test-scene",
+        renderer: {
+          screenEffects: {
+            shake: (effectContainer) => effectContainer.classList.add("shake"),
+          },
+        },
+      });
+
+      await vi.runAllTimersAsync();
+      expect(container.classList.contains("shake")).toBe(true);
+
+      container.dispatchEvent(new Event("animationend"));
+
+      expect(container.classList.contains("shake")).toBe(false);
+    });
+
+    it("should run effects that do not add a class", async () => {
+      const screenEffect = vi.fn();
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say("[flash] Effect without a class");
+      testScript.addScene(testScene);
+
+      new VNEngine({
+        script: testScript,
+        container: container,
+        startScene: "test-scene",
+        renderer: { screenEffects: { flash: screenEffect } },
+      });
+
+      await vi.runAllTimersAsync();
+
+      expect(screenEffect).toHaveBeenCalledWith(container);
+      expect(getDialogueText()).toBe("Effect without a class");
+    });
+
+    it("should leave unregistered dialogue tags untouched", async () => {
+      const testScript = new Script();
+      const testScene = new Scene("test-scene");
+      const character = new Character("TestCharacter");
+      testScene.add(character);
+      character.say("[shake] Plain dialogue");
+      testScript.addScene(testScene);
+
+      new VNEngine({
+        script: testScript,
+        container: container,
+        startScene: "test-scene",
+      });
+
+      await vi.runAllTimersAsync();
+
+      expect(getDialogueText()).toBe("[shake] Plain dialogue");
+    });
   });
 
   describe("character management", () => {
     const createTestEngineWithCharacter = async (
-      characterActions: (character: Character, scene: Scene) => void
+      characterActions: (character: Character, scene: Scene) => void,
     ) => {
       container.innerHTML = "";
 
@@ -404,7 +532,7 @@ describe("DOMRenderer", () => {
       const { testEngine } = await createTestEngineWithCharacter(
         (character) => {
           character.hide(); // Hide before showing
-        }
+        },
       );
 
       // Should not crash
@@ -415,11 +543,11 @@ describe("DOMRenderer", () => {
       const { testEngine } = await createTestEngineWithCharacter(
         (character) => {
           character.show(); // Show again
-        }
+        },
       );
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement).toBeDefined();
       expect(characterElement.style.display).toBe("block");
@@ -443,7 +571,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement).toBeDefined();
 
@@ -459,7 +587,7 @@ describe("DOMRenderer", () => {
       });
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement).toBeDefined();
 
@@ -486,7 +614,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       const img = characterElement.querySelector("img") as HTMLImageElement;
       expect(img.src).toContain("updated.png");
@@ -512,7 +640,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       const img = characterElement.querySelector("img") as HTMLImageElement;
       expect(img).toBeDefined();
@@ -542,7 +670,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       const img = characterElement.querySelector("img") as HTMLImageElement;
       expect(img.src).toContain("assets/updated.png");
@@ -569,7 +697,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       const img = characterElement.querySelector("img") as HTMLImageElement;
       expect(img.src).toContain("assets/character.png");
@@ -593,7 +721,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("25%");
       expect(characterElement.style.bottom).toBe("0px"); // CSS normalizes "0" to "0px"
@@ -616,7 +744,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("30%");
       expect(characterElement.style.bottom).toBe("80%");
@@ -639,7 +767,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("100px");
       expect(characterElement.style.bottom).toBe("50px");
@@ -662,7 +790,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("30%");
       expect(characterElement.style.bottom).toBe("75%");
@@ -685,7 +813,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.width).toBe("30%");
       expect(characterElement.style.height).toBe("60%");
@@ -707,7 +835,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.width).toBe("300px");
       expect(characterElement.style.height).toBe("400px");
@@ -729,7 +857,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.width).toBe("50%");
       expect(characterElement.style.height).toBe("60%");
@@ -753,13 +881,13 @@ describe("DOMRenderer", () => {
 
       // Click to advance past first show action
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click();
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("75%");
     });
@@ -782,13 +910,13 @@ describe("DOMRenderer", () => {
 
       // Click to advance past first show action
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click();
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.width).toBe("500px");
     });
@@ -809,7 +937,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       // Should have position: absolute but no left/bottom set (or undefined)
       expect(characterElement.style.position).toBe("absolute");
@@ -834,7 +962,7 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("30%");
       expect(characterElement.style.bottom).toBe("50px");
@@ -862,13 +990,13 @@ describe("DOMRenderer", () => {
 
       // Click to advance past first show action
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click();
       await vi.runAllTimersAsync();
 
       const characterElement = container.querySelector(
-        '[data-character-name="TestCharacter"]'
+        '[data-character-name="TestCharacter"]',
       ) as HTMLElement;
       expect(characterElement.style.left).toBe("50%");
       expect(characterElement.style.width).toBe("400px");
@@ -878,7 +1006,7 @@ describe("DOMRenderer", () => {
 
   describe("action processing", () => {
     const createTestEngineWithAction = async (
-      action: (scene: Scene) => void
+      action: (scene: Scene) => void,
     ) => {
       container.innerHTML = "";
 
@@ -919,7 +1047,7 @@ describe("DOMRenderer", () => {
 
       // Click to advance - should handle null scene gracefully
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click();
 
@@ -938,7 +1066,7 @@ describe("DOMRenderer", () => {
         effect: "fade",
       });
       narrator.say(
-        "The leaves had just begun to turn, painting the world in shades of gold and crimson."
+        "The leaves had just begun to turn, painting the world in shades of gold and crimson.",
       );
       testScript.addScene(testScene);
 
@@ -952,23 +1080,23 @@ describe("DOMRenderer", () => {
 
       // Verify the first dialogue is automatically displayed
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       expect(dialogueText).toBeDefined();
       // Should show the first dialogue, not the second
       expect(dialogueText.textContent).toBe(
-        "It was a crisp autumn morning in the city park."
+        "It was a crisp autumn morning in the city park.",
       );
 
       // Verify the speaker name is set
       const speakerName = container.querySelector(
-        ".vn-speaker-name"
+        ".vn-speaker-name",
       ) as HTMLElement;
       expect(speakerName.textContent).toBe("Narrator");
 
       // Verify character is shown
       const characterElement = container.querySelector(
-        '[data-character-name="Narrator"]'
+        '[data-character-name="Narrator"]',
       ) as HTMLElement;
       expect(characterElement).toBeDefined();
       expect(characterElement.style.display).toBe("block");
@@ -1002,18 +1130,18 @@ describe("DOMRenderer", () => {
 
       // Should have advanced through both "show" actions and displayed the first dialogue
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       expect(dialogueText.textContent).toBe(
-        "It was a crisp autumn morning in the city park."
+        "It was a crisp autumn morning in the city park.",
       );
 
       // Both characters should be shown
       const narratorElement = container.querySelector(
-        '[data-character-name="Narrator"]'
+        '[data-character-name="Narrator"]',
       ) as HTMLElement;
       const alexElement = container.querySelector(
-        '[data-character-name="Alex"]'
+        '[data-character-name="Alex"]',
       ) as HTMLElement;
       expect(narratorElement).toBeDefined();
       expect(alexElement).toBeDefined();
@@ -1028,7 +1156,7 @@ describe("DOMRenderer", () => {
       testScene.add(character);
       character.say(
         "This is a long typewriter text that should be cancelled.",
-        { effect: "typewriter" }
+        { effect: "typewriter" },
       );
       character.say("Second dialogue");
       testScript.addScene(testScene);
@@ -1040,10 +1168,10 @@ describe("DOMRenderer", () => {
       });
 
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
 
       // Wait a bit for typewriter to start
@@ -1060,7 +1188,7 @@ describe("DOMRenderer", () => {
 
       // Should have cancelled animation and progressed to full text.
       expect(dialogueText.textContent).toBe(
-        "This is a long typewriter text that should be cancelled."
+        "This is a long typewriter text that should be cancelled.",
       );
     });
 
@@ -1080,10 +1208,10 @@ describe("DOMRenderer", () => {
       });
 
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
 
       // Verify fade has started (text is set, opacity should be transitioning from 0)
@@ -1126,7 +1254,7 @@ describe("DOMRenderer", () => {
       (renderer as any).isProcessing = true;
 
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click(); // Should be ignored when isProcessing is true and no animation
 
@@ -1134,7 +1262,7 @@ describe("DOMRenderer", () => {
 
       // Should still be on first dialogue
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       expect(dialogueText.textContent).toBe("First");
     });
@@ -1190,7 +1318,7 @@ describe("DOMRenderer", () => {
 
       // Click to advance - should handle null scene gracefully
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click();
 
@@ -1218,7 +1346,7 @@ describe("DOMRenderer", () => {
 
       // First click advances past the show action, second click advances past dialogue
       const dialogueBox = container.querySelector(
-        ".vn-dialogue-box"
+        ".vn-dialogue-box",
       ) as HTMLElement;
       dialogueBox.click(); // Advance past show action
       await vi.runAllTimersAsync();
@@ -1226,10 +1354,10 @@ describe("DOMRenderer", () => {
       await vi.runAllTimersAsync();
 
       const dialogueText = container.querySelector(
-        ".vn-dialogue-text"
+        ".vn-dialogue-text",
       ) as HTMLElement;
       const speakerName = container.querySelector(
-        ".vn-speaker-name"
+        ".vn-speaker-name",
       ) as HTMLElement;
 
       expect(dialogueText.textContent).toBe("");
